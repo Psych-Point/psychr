@@ -9,7 +9,8 @@
     "preview": "electron-vite preview",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
-    "lint": "eslint src --ext .ts,.tsx"
+    "lint": "eslint src --ext .ts,.tsx",
+    "build:web": "vite build --config vite.renderer.config.ts"
   },
   "keywords": ["psychology", "statistics", "IRT", "research", "R"],
   "license": "MIT",

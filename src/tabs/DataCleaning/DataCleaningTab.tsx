@@ -95,50 +95,57 @@ export function DataCleaningTab() {
         ? `df <- readRDS("${safePath}")`
         : `df <- read.csv("${safePath}")`
 
-      // Call R to read the file and inspect its structure
+      // Build the inspect script — r_script label is computed in JS, never embedded
+      // in an R string (avoids double-quote escaping bugs)
       const inspectScript = `
 library(jsonlite)
-${readCmd}
+suppressPackageStartupMessages({
+  ${readCmd}
+})
+
+# Convert haven/readxl labelled columns to plain types
+df <- as.data.frame(lapply(df, function(x) {
+  if (inherits(x, "haven_labelled") || inherits(x, "labelled")) {
+    return(as.character(x))
+  }
+  if (is.factor(x)) return(as.character(x))
+  x
+}), stringsAsFactors = FALSE)
 
 n_rows <- nrow(df)
-n_cols <- ncol(df)
 
 col_info <- lapply(names(df), function(col_name) {
   col <- df[[col_name]]
-  col_class <- class(col)[1]
   col_type <- if (is.numeric(col)) "numeric"
-              else if (is.factor(col)) "factor"
               else if (is.logical(col)) "logical"
               else if (inherits(col, "Date") || inherits(col, "POSIXct")) "date"
               else "character"
 
   result <- list(
-    name = col_name,
-    type = col_type,
+    name       = col_name,
+    type       = col_type,
     missingCount = sum(is.na(col)),
-    uniqueCount = length(unique(col[!is.na(col)]))
+    uniqueCount  = length(unique(col[!is.na(col)]))
   )
   if (col_type == "numeric") {
-    result$min <- round(min(col, na.rm = TRUE), 4)
-    result$max <- round(max(col, na.rm = TRUE), 4)
-    result$mean <- round(mean(col, na.rm = TRUE), 4)
-    result$sd <- round(sd(col, na.rm = TRUE), 4)
+    result[["min"]]  <- round(min(col, na.rm = TRUE), 4)
+    result[["max"]]  <- round(max(col, na.rm = TRUE), 4)
+    result[["mean"]] <- round(mean(col, na.rm = TRUE), 4)
+    result[["sd"]]   <- round(sd(col,  na.rm = TRUE), 4)
   }
   result
 })
 
-# First 200 rows as JSON
-preview_rows <- head(df, 200)
+preview_rows <- head(df, 500)
 preview_list <- lapply(seq_len(nrow(preview_rows)), function(i) {
   row <- as.list(preview_rows[i, ])
-  lapply(row, function(v) if (is.na(v)) NULL else v)
+  lapply(row, function(v) if (length(v) == 1 && is.na(v)) NULL else v)
 })
 
 cat(toJSON(list(
   success = TRUE,
-  r_script = paste0("# Import data\\n${readCmd.replace(/\n/g, '\\n')}\\n"),
   data = list(
-    rows = n_rows,
+    rows    = n_rows,
     columns = col_info,
     preview = preview_list
   )
@@ -148,17 +155,21 @@ cat(toJSON(list(
       // Run the R script
       const rResult = await (window as any).psychr?.r?.run(inspectScript)
 
-      if (!rResult?.success) {
-        alert(`Failed to import file: ${rResult?.error || 'Unknown error'}`)
+      if (!rResult) {
+        alert('Import failed: R is not available. Is R installed on your machine?\nDownload from https://cran.r-project.org')
+        return
+      }
+      if (!rResult.success) {
+        alert(`Import failed:\n${rResult.error || rResult.stderr || 'Unknown R error'}`)
         return
       }
 
-      const rData = rResult.data ?? rResult
+      const rData = (rResult.data ?? rResult) as Record<string, unknown>
       const dataset: Dataset = {
         id: `dataset_${Date.now()}`,
         name,
         path,
-        rows: rData.rows as number ?? 0,
+        rows: (rData.rows as number) ?? 0,
         columns: (rData.columns as DataColumn[]) ?? [],
         data: (rData.preview as Record<string, unknown>[]) ?? [],
         isDuckDB: false,

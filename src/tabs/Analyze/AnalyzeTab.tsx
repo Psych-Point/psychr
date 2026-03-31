@@ -243,7 +243,7 @@ export function AnalyzeTab() {
           </div>
         }
         rightWidth="320px"
-        right={<ScriptPanel />}
+        right={<RConsole />}
       />
 
       {/* Analysis Dialogs */}

@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+
 // Renderer-only Vite config for browser preview and GitHub Pages deployment
 export default defineConfig({
   plugins: [react()],
@@ -11,3 +12,4 @@ export default defineConfig({
     outDir: 'out/renderer',
   },
 })
+

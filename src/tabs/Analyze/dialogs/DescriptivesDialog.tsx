@@ -47,15 +47,7 @@ export function DescriptivesDialog({ onClose, onRun }: Props) {
 library(psych)
 library(jsonlite)
 
-# Load active dataset (in production, df is already in R environment)
-# For now using demo data
-df <- data.frame(
-  age = c(24, 19, 22, 25, 21, 23, 20, 26),
-  anxiety = c(42, 55, 38, 61, 47, 50, 58, 35),
-  depression = c(31, 44, 28, 52, 36, 39, 49, 25),
-  gpa = c(3.7, 2.9, 3.4, 2.6, 3.1, 3.5, 3.0, 3.8)
-)
-
+# df is injected by useRBridge from the active dataset
 selected_vars <- c(${varList})
 df_sub <- df[, intersect(selected_vars, names(df)), drop = FALSE]
 

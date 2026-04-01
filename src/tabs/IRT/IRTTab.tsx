@@ -67,25 +67,20 @@ export function IRTTab() {
   const handleRunIRT = async () => {
     const items = selectedItems.length > 0 ? selectedItems : numericCols.map((c) => c.name)
     if (items.length < 3) {
-      alert('Please select at least 3 items for IRT analysis.')
+      setItemError('Select at least 3 items for IRT analysis.')
       return
     }
+    setItemError(null)
 
+    // df is injected by useRBridge from the active dataset
     const itemList = items.map((i) => `"${i}"`).join(', ')
     const script = `
 library(mirt)
 library(jsonlite)
 
-# Demo data — in production, df is loaded from the Data tab
-set.seed(42)
-n <- 200
-items <- 10
-data <- matrix(rbinom(n * items, 1, prob = 0.5 + 0.3 * rnorm(n)), nrow = n, ncol = items)
-colnames(data) <- paste0("item", 1:items)
-df <- as.data.frame(data)
-
 model_type <- "${selectedModel === '2pl' ? '2PL' : selectedModel === '3pl' ? '3PL' : selectedModel === 'grm' ? 'graded' : selectedModel === 'gpcm' ? 'gpcm' : 'Rasch'}"
-fit <- mirt(df, 1, itemtype = model_type, verbose = FALSE)
+irt_df <- df[, c(${itemList}), drop = FALSE]
+fit <- mirt(irt_df, 1, itemtype = model_type, verbose = FALSE)
 params <- coef(fit, simplify = TRUE, IRTpars = TRUE)$items
 
 param_list <- lapply(rownames(params), function(item) {

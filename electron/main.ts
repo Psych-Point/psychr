@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import { join } from 'path'
+import { readFileSync } from 'fs'
 import { RBridge } from './r-bridge'
 
 let mainWindow: BrowserWindow | null = null

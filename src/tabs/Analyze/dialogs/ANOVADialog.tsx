@@ -64,7 +64,6 @@ posthoc_rows <- lapply(seq_len(nrow(comps)), function(i) {
 
     const rScript = `
 library(jsonlite)
-${dataSetup}
 
 dep <- "${dep}"
 grp <- "${grp}"

@@ -115,7 +115,7 @@ interface PsychrState {
   removeDataset: (id: string) => void
   setActiveDataset: (id: string) => void
   updateDataset: (id: string, updates: Partial<Dataset>) => void
-  get activeDataset(): Dataset | null
+  activeDataset: Dataset | null
 
   // Analysis results
   results: AnalysisResult[]

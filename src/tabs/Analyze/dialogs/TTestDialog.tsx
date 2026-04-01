@@ -38,22 +38,11 @@ export function TTestDialog({ onClose, onRun, testType: initialTestType }: Props
     let rScript = ''
     let label = ''
 
-    // Use demo data when no dataset loaded
-    const dataSetup = activeDataset
-      ? `# Load dataset\ndf <- readRDS("${activeDataset.path ?? ''}")`
-      : `df <- data.frame(
-  age = c(24, 19, 22, 25, 21, 23, 20, 26),
-  gender = c("Female","Male","Female","Male","Female","Non-binary","Male","Female"),
-  anxiety = c(42, 55, 38, 61, 47, 50, 58, 35),
-  depression = c(31, 44, 28, 52, 36, 39, 49, 25),
-  gpa = c(3.7, 2.9, 3.4, 2.6, 3.1, 3.5, 3.0, 3.8)
-)`
-
+    // df is injected by useRBridge from the active dataset
     if (testType === 'independent') {
       if (!depVar || !groupVar) return
       rScript = `
 library(jsonlite)
-${dataSetup}
 
 dep <- "${depVar}"
 grp <- "${groupVar}"

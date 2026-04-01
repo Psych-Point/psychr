@@ -198,10 +198,13 @@ cat(toJSON(list(
             </div>
           </div>
 
-          <div className="p-4 border-t border-gray-200">
+          <div className="p-4 border-t border-gray-200 space-y-2">
+            {itemError && (
+              <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">{itemError}</p>
+            )}
             <button
               onClick={handleRunIRT}
-              disabled={isRunning}
+              disabled={isRunning || numericCols.length < 3}
               className="w-full bg-psychr-midblue text-white text-sm font-medium py-2 rounded hover:bg-psychr-blue transition-colors disabled:opacity-50"
             >
               {isRunning ? 'Running IRT…' : 'Run IRT Analysis'}

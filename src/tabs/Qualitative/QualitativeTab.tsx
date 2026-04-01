@@ -5,7 +5,7 @@
  * highlight text to assign codes, view co-occurrence matrix.
  */
 
-import { useState, useRef } from 'react'
+import React, { useState, useRef } from 'react'
 import { WorkspaceLayout, PanelHeader } from '../../components/layout/WorkspaceLayout'
 import { usePsychrStore, QualCode, QualDocument, QualSegment } from '../../store'
 

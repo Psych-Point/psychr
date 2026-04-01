@@ -228,12 +228,11 @@ export function QualitativeTab() {
               </div>
             ) : (
               <div
+                ref={docViewRef}
                 className="prose prose-sm max-w-none text-gray-800 leading-relaxed select-text"
                 onMouseUp={handleTextSelect}
               >
-                {activeDoc.content.split('\n').map((line, i) => (
-                  <p key={i} className="mb-2">{line || <br />}</p>
-                ))}
+                <HighlightedDoc doc={activeDoc} codes={qualCodes} />
               </div>
             )}
           </div>

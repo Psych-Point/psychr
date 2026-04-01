@@ -137,10 +137,11 @@ if (exists("df") && is.data.frame(df)) {
         return
       }
 
-      const rData = result.data ?? result
+      // has_df is on the top-level result; rows/columns/preview are inside result.data
+      const rData = (result.data ?? result) as Record<string, unknown>
 
       // If the script returned a modified df, update the active dataset
-      if (rData.has_df && activeDataset) {
+      if (result.has_df && activeDataset) {
         updateDataset(activeDataset.id, {
           rows: rData.rows as number,
           columns: rData.columns as DataColumn[],
@@ -148,7 +149,7 @@ if (exists("df") && is.data.frame(df)) {
         })
       }
 
-      setOutput(rData.message as string || 'Done.')
+      setOutput((rData.message as string) || (result.has_df ? 'Dataset updated.' : 'Done.'))
       appendToScript(code)
     } catch (err) {
       setRunError(err instanceof Error ? err.message : 'Failed to run R')

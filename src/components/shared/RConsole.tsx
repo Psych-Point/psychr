@@ -8,8 +8,12 @@
  */
 
 import { useState, useCallback } from 'react'
-import Editor from '@monaco-editor/react'
+import Editor, { loader } from '@monaco-editor/react'
+import * as monaco from 'monaco-editor'
 import { usePsychrStore, DataColumn } from '../../store'
+
+// Use locally installed monaco-editor instead of CDN — works offline and in Electron
+loader.config({ monaco })
 
 const STARTER_CODE = `# df is your active dataset
 # Use dplyr / tidyverse syntax freely

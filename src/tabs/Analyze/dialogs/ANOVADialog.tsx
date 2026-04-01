@@ -30,23 +30,12 @@ export function ANOVADialog({ onClose, onRun }: Props) {
   const [leveneTest, setLeveneTest] = useState(true)
 
   const handleRun = async () => {
-    if (!depVar && !activeDataset) {
-      // Use demo defaults
-    } else if (!depVar || !groupVar) return
+    if (!depVar || !groupVar) return
 
-    const dep = depVar || 'anxiety'
-    const grp = groupVar || 'gender'
+    const dep = depVar
+    const grp = groupVar
 
-    const dataSetup = activeDataset
-      ? `# Load dataset\ndf <- readRDS("${activeDataset.path ?? ''}")`
-      : `df <- data.frame(
-  age = c(24, 19, 22, 25, 21, 23, 20, 26),
-  gender = c("Female","Male","Female","Male","Female","Non-binary","Male","Female"),
-  anxiety = c(42, 55, 38, 61, 47, 50, 58, 35),
-  depression = c(31, 44, 28, 52, 36, 39, 49, 25),
-  gpa = c(3.7, 2.9, 3.4, 2.6, 3.1, 3.5, 3.0, 3.8)
-)`
-
+    // df is injected by useRBridge from the active dataset
     const postHocScript = postHoc === 'tukey'
       ? `posthoc <- TukeyHSD(model)
 posthoc_table <- as.data.frame(posthoc[[grp]])

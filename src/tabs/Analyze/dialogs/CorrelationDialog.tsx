@@ -82,11 +82,10 @@ cat(toJSON(list(
       label = `${method.charAt(0).toUpperCase() + method.slice(1)} Correlation: ${v1} × ${v2}`
     } else {
       // Matrix mode
-      const vars = selectedVars.length >= 2 ? selectedVars : ['anxiety', 'depression', 'gpa']
-      const varList = vars.map((v) => `"${v}"`).join(', ')
+      if (selectedVars.length < 2) return
+      const varList = selectedVars.map((v) => `"${v}"`).join(', ')
       rScript = `
 library(jsonlite)
-${dataSetup}
 
 vars <- c(${varList})
 method <- "${method}"

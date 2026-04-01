@@ -251,7 +251,11 @@ export function AnalyzeTab() {
         <DescriptivesDialog onClose={() => setActiveDialog(null)} onRun={run} />
       )}
       {(activeDialog === 'independent-t' || activeDialog === 'paired-t' || activeDialog === 'one-sample-t') && (
-        <TTestDialog onClose={() => setActiveDialog(null)} onRun={run} />
+        <TTestDialog
+          onClose={() => setActiveDialog(null)}
+          onRun={run}
+          testType={activeDialog === 'paired-t' ? 'paired' : activeDialog === 'one-sample-t' ? 'one-sample' : 'independent'}
+        />
       )}
       {activeDialog === 'one-way-anova' && (
         <ANOVADialog onClose={() => setActiveDialog(null)} onRun={run} />

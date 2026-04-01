@@ -19,12 +19,15 @@ export function QualitativeTab() {
   const qualDocuments = usePsychrStore((s) => s.qualDocuments)
   const addQualCode = usePsychrStore((s) => s.addQualCode)
   const addQualDocument = usePsychrStore((s) => s.addQualDocument)
+  const addQualSegment = usePsychrStore((s) => s.addQualSegment)
 
   const [activeDocId, setActiveDocId] = useState<string | null>(null)
   const [selectedText, setSelectedText] = useState('')
+  const [selectionOffsets, setSelectionOffsets] = useState<{ start: number; end: number } | null>(null)
   const [newCodeName, setNewCodeName] = useState('')
   const [showNewCode, setShowNewCode] = useState(false)
   const [hoveredCode, setHoveredCode] = useState<string | null>(null)
+  const docViewRef = useRef<HTMLDivElement>(null)
 
   const activeDoc = qualDocuments.find((d) => d.id === activeDocId)
 

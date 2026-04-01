@@ -242,6 +242,15 @@ export const usePsychrStore = create<PsychrState>()(
         set((state) => ({ qualCodes: state.qualCodes.filter((c) => c.id !== id) })),
       addQualDocument: (doc) =>
         set((state) => ({ qualDocuments: [...state.qualDocuments, doc] })),
+      addQualSegment: (docId, segment) =>
+        set((state) => ({
+          qualDocuments: state.qualDocuments.map((d) =>
+            d.id === docId ? { ...d, segments: [...d.segments, segment] } : d
+          ),
+          qualCodes: state.qualCodes.map((c) =>
+            segment.codeIds.includes(c.id) ? { ...c, count: c.count + 1 } : c
+          ),
+        })),
 
       // Markdown
       markdownContent: '# My Research Report\n\nWrite your report here...\n',

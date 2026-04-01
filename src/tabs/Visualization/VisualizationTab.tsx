@@ -102,21 +102,15 @@ export function VisualizationTab() {
   }
 
   const handleGeneratePlot = async () => {
-    if (!config.x) { alert('Please select an X variable.'); return }
+    if (!config.x) return
 
     const ggcode = buildGgplotScript()
     setGgplotCode(ggcode)
 
+    // df is injected by useRBridge from the active dataset
     const script = `
 library(ggplot2)
 library(jsonlite)
-
-# Demo data
-set.seed(42)
-df <- data.frame(
-  ${numCols.slice(0, 5).map((c, i) => `${c.name} = rnorm(100, mean = ${40 + i * 10}, sd = ${8 + i * 2})`).join(',\n  ')},
-  group = sample(c("A", "B", "C"), 100, replace = TRUE)
-)
 
 p <- ${ggcode}
 

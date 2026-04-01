@@ -11,11 +11,12 @@ import { usePsychrStore } from '../../../store'
 interface Props {
   onClose: () => void
   onRun: (script: string, label?: string) => Promise<Record<string, unknown> | null>
+  testType?: TTestType
 }
 
 type TTestType = 'independent' | 'paired' | 'one-sample'
 
-export function TTestDialog({ onClose, onRun }: Props) {
+export function TTestDialog({ onClose, onRun, testType: initialTestType }: Props) {
   const activeDataset = usePsychrStore((s) => s.activeDataset)
   const addResult = usePsychrStore((s) => s.addResult)
 
@@ -24,7 +25,7 @@ export function TTestDialog({ onClose, onRun }: Props) {
     (c) => c.type === 'factor' || c.type === 'character'
   )
 
-  const [testType, setTestType] = useState<TTestType>('independent')
+  const [testType, setTestType] = useState<TTestType>(initialTestType ?? 'independent')
   const [depVar, setDepVar] = useState('')
   const [groupVar, setGroupVar] = useState('')
   const [var2, setVar2] = useState('')

@@ -39,6 +39,12 @@ contextBridge.exposeInMainWorld('psychr', {
     saveFile: (options?: object): Promise<{ canceled: boolean; filePath?: string }> => ipcRenderer.invoke('dialog:saveFile', options),
   },
 
+  // File system (direct read — bypasses R for CSV/TSV)
+  fs: {
+    read: (filePath: string): Promise<{ success: boolean; content?: string; error?: string }> =>
+      ipcRenderer.invoke('file:read', filePath),
+  },
+
   // Shell utilities
   shell: {
     openExternal: (url: string): Promise<void> => ipcRenderer.invoke('shell:openExternal', url),

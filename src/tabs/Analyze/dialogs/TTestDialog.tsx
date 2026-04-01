@@ -97,7 +97,6 @@ cat(toJSON(list(
       if (!depVar || !var2) return
       rScript = `
 library(jsonlite)
-${dataSetup}
 
 v1 <- "${depVar}"
 v2 <- "${var2}"

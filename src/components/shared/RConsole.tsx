@@ -250,7 +250,7 @@ if (exists("df") && is.data.frame(df)) {
               defaultLanguage="r"
               theme="vs-dark"
               value={currentCode}
-              onChange={(val) => setCode(val ?? '')}
+              onChange={(val) => { setCode(val ?? ''); setRunError(null) }}
               options={{
                 fontSize: 12,
                 fontFamily: 'JetBrains Mono, Fira Code, monospace',
@@ -277,9 +277,6 @@ if (exists("df") && is.data.frame(df)) {
                 {!isRunning && output && (
                   <span className="text-xs text-green-400 font-mono">{output}</span>
                 )}
-                {!isRunning && runError && (
-                  <span className="text-xs text-red-400 font-mono truncate max-w-xs">{runError}</span>
-                )}
               </div>
               <div className="flex gap-2">
                 <button
@@ -298,8 +295,13 @@ if (exists("df") && is.data.frame(df)) {
               </div>
             </div>
             {runError && (
-              <div className="px-3 pb-2 text-xs font-mono text-red-400 bg-red-950/30 max-h-24 overflow-auto">
-                {runError}
+              <div className="px-3 pb-2 text-xs font-mono text-red-400 bg-red-950/30 max-h-24 overflow-auto flex items-start gap-2">
+                <span className="flex-1">{runError}</span>
+                <button
+                  onClick={() => setRunError(null)}
+                  className="text-red-400 hover:text-red-200 text-sm leading-none flex-shrink-0 mt-0.5"
+                  title="Dismiss error"
+                >×</button>
               </div>
             )}
           </div>

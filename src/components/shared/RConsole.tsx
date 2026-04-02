@@ -15,22 +15,40 @@ import { usePsychrStore, DataColumn } from '../../store'
 // Use locally installed monaco-editor instead of CDN — works offline and in Electron
 loader.config({ monaco })
 
-const STARTER_CODE = `# df is your active dataset
-# Use dplyr / tidyverse syntax freely
-# Example:
+function buildStarterCode(columns: { name: string; type: string }[] = []): string {
+  const numCols = columns.filter((c) => c.type === 'numeric').map((c) => c.name)
+  const catCols = columns.filter((c) => c.type === 'factor' || c.type === 'character').map((c) => c.name)
+
+  const filterExample = numCols.length > 0
+    ? `filter(${numCols[0]} > 0)`
+    : catCols.length > 0
+      ? `filter(!is.na(${catCols[0]}))`
+      : `filter(!is.na(.data[[names(df)[1]]]))`
+
+  const mutateExample = numCols.length > 0
+    ? `mutate(${numCols[0]}_z = scale(${numCols[0]})[,1])`
+    : `mutate(row_id = row_number())`
+
+  const colComment = columns.length > 0
+    ? `# Columns: ${columns.slice(0, 6).map((c) => c.name).join(', ')}${columns.length > 6 ? ', …' : ''}`
+    : '# No dataset loaded — import data on the Data tab first'
+
+  return `# df is your active dataset
 library(dplyr)
+${colComment}
 
 df <- df %>%
-  filter(age > 20) %>%
-  mutate(anxiety_z = scale(anxiety)[,1])
+  ${filterExample} %>%
+  ${mutateExample}
 
 # Return df to update the dataset in PsychR:
 df
 `
+}
 
 export function RConsole() {
   const [activeTab, setActiveTab] = useState<'script' | 'console'>('script')
-  const [code, setCode] = useState(STARTER_CODE)
+  const [code, setCode] = useState<string | null>(null)
   const [output, setOutput] = useState<string | null>(null)
   const [isRunning, setIsRunning] = useState(false)
   const [runError, setRunError] = useState<string | null>(null)
@@ -40,6 +58,8 @@ export function RConsole() {
   const appendToScript = usePsychrStore((s) => s.appendToScript)
   const activeDataset = usePsychrStore((s) => s.activeDataset)
   const updateDataset = usePsychrStore((s) => s.updateDataset)
+
+  const currentCode = code ?? buildStarterCode(activeDataset?.columns ?? [])
 
   const handleCopyScript = () => {
     navigator.clipboard.writeText(sessionScript).catch(() => {})
@@ -57,7 +77,7 @@ export function RConsole() {
       const json = JSON.stringify(rows)
         .replace(/\\/g, '\\\\')
         .replace(/'/g, "\\'")
-      dataInjection = `df <- as.data.frame(jsonlite::fromJSON('${json}'), stringsAsFactors = FALSE)\n`
+      dataInjection = `df <- as.data.frame(jsonlite::fromJSON('${json}'), stringsAsFactors = FALSE)\ndf <- type.convert(df, as.is = TRUE)\n`
     }
 
     const wrappedScript = `
@@ -67,7 +87,7 @@ library(dplyr)
 ${dataInjection}
 
 # ── User code ─────────────────────────────────────────────────────────────────
-${code}
+${currentCode}
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Capture the last expression if it's a data frame
@@ -100,7 +120,7 @@ if (exists("df") && is.data.frame(df)) {
 
   cat(toJSON(list(
     success    = TRUE,
-    r_script   = ${JSON.stringify(code)},
+    r_script   = ${JSON.stringify(currentCode)},
     has_df     = TRUE,
     data = list(
       rows     = n_rows,
@@ -113,7 +133,7 @@ if (exists("df") && is.data.frame(df)) {
   # No df — just report success
   cat(toJSON(list(
     success  = TRUE,
-    r_script = ${JSON.stringify(code)},
+    r_script = ${JSON.stringify(currentCode)},
     has_df   = FALSE,
     data     = list(message = "Code ran successfully (no df returned)")
   ), auto_unbox = TRUE))
@@ -150,13 +170,13 @@ if (exists("df") && is.data.frame(df)) {
       }
 
       setOutput((rData.message as string) || (result.has_df ? 'Dataset updated.' : 'Done.'))
-      appendToScript(code)
+      appendToScript(currentCode)
     } catch (err) {
       setRunError(err instanceof Error ? err.message : 'Failed to run R')
     } finally {
       setIsRunning(false)
     }
-  }, [code, activeDataset, updateDataset, appendToScript])
+  }, [currentCode, activeDataset, updateDataset, appendToScript])
 
   return (
     <div className="flex flex-col h-full">
@@ -229,7 +249,7 @@ if (exists("df") && is.data.frame(df)) {
               height="100%"
               defaultLanguage="r"
               theme="vs-dark"
-              value={code}
+              value={currentCode}
               onChange={(val) => setCode(val ?? '')}
               options={{
                 fontSize: 12,
@@ -263,7 +283,7 @@ if (exists("df") && is.data.frame(df)) {
               </div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => { setOutput(null); setRunError(null); setCode(STARTER_CODE) }}
+                  onClick={() => { setOutput(null); setRunError(null); setCode(null) }}
                   className="text-xs text-gray-500 hover:text-gray-300 px-2 py-1"
                 >
                   Reset

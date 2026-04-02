@@ -140,6 +140,7 @@ interface PsychrState {
   removeQualCode: (id: string) => void
   addQualDocument: (doc: QualDocument) => void
   addQualSegment: (docId: string, segment: QualSegment) => void
+  removeQualSegment: (docId: string, segmentId: string) => void
 
   // Markdown content
   markdownContent: string
@@ -247,8 +248,13 @@ export const usePsychrStore = create<PsychrState>()(
           qualDocuments: state.qualDocuments.map((d) =>
             d.id === docId ? { ...d, segments: [...d.segments, segment] } : d
           ),
-          qualCodes: state.qualCodes.map((c) =>
-            segment.codeIds.includes(c.id) ? { ...c, count: c.count + 1 } : c
+        })),
+      removeQualSegment: (docId, segmentId) =>
+        set((state) => ({
+          qualDocuments: state.qualDocuments.map((d) =>
+            d.id === docId
+              ? { ...d, segments: d.segments.filter((s) => s.id !== segmentId) }
+              : d
           ),
         })),
 

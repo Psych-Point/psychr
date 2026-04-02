@@ -38,7 +38,6 @@ export function TTestDialog({ onClose, onRun, testType: initialTestType }: Props
     let rScript = ''
     let label = ''
 
-    // df is injected by useRBridge from the active dataset
     if (testType === 'independent') {
       if (!depVar || !groupVar) return
       rScript = `
@@ -278,7 +277,6 @@ cat(toJSON(list(
                 >
                   <option value="">Select variable...</option>
                   {numericCols.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-                  {numericCols.length === 0 && <option value="anxiety">anxiety (demo)</option>}
                 </select>
               </div>
               <div>
@@ -290,7 +288,6 @@ cat(toJSON(list(
                 >
                   <option value="">Select variable...</option>
                   {numericCols.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-                  {numericCols.length === 0 && <option value="depression">depression (demo)</option>}
                 </select>
               </div>
             </div>
@@ -307,7 +304,6 @@ cat(toJSON(list(
                 >
                   <option value="">Select variable...</option>
                   {numericCols.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-                  {numericCols.length === 0 && <option value="gpa">gpa (demo)</option>}
                 </select>
               </div>
               <div>
@@ -352,7 +348,7 @@ cat(toJSON(list(
 
           {!activeDataset && (
             <div className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-3 py-2">
-              No dataset loaded — using demo data (n = 8). Import a dataset on the Data tab.
+              No dataset loaded — import a dataset on the Data tab before running this analysis.
             </div>
           )}
         </div>

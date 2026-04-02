@@ -147,7 +147,6 @@ cat(toJSON(list(
             >
               <option value="">Select outcome...</option>
               {numericCols.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-              {numericCols.length === 0 && <option value="gpa">gpa (demo)</option>}
             </select>
           </div>
 
@@ -158,7 +157,7 @@ cat(toJSON(list(
               <span className="text-gray-400 font-normal ml-1">(select one or more)</span>
             </p>
             {numericCols.length === 0 ? (
-              <p className="text-xs text-gray-500">Using demo predictors: anxiety, depression</p>
+              <p className="text-xs text-gray-500">Load a dataset with numeric variables first.</p>
             ) : (
               <div className="grid grid-cols-2 gap-1.5 max-h-44 overflow-y-auto border border-gray-200 rounded-lg p-2">
                 {numericCols
@@ -207,7 +206,7 @@ cat(toJSON(list(
 
           {!activeDataset && (
             <div className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-3 py-2">
-              No dataset loaded — using demo data. Import a dataset on the Data tab.
+              No dataset loaded — import a dataset on the Data tab before running this analysis.
             </div>
           )}
         </div>

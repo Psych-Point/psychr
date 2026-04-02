@@ -35,12 +35,13 @@ export function CorrelationDialog({ onClose, onRun }: Props) {
   }
 
   const handleRun = async () => {
-    // df is injected by useRBridge from the active dataset
     let rScript = ''
     let label = ''
 
     if (mode === 'pairwise') {
       if (!var1 || !var2) return
+      const v1 = var1
+      const v2 = var2
       rScript = `
 library(jsonlite)
 
@@ -82,8 +83,11 @@ cat(toJSON(list(
       label = `${method.charAt(0).toUpperCase() + method.slice(1)} Correlation: ${v1} × ${v2}`
     } else {
       // Matrix mode
-      if (selectedVars.length < 2) return
-      const varList = selectedVars.map((v) => `"${v}"`).join(', ')
+      const vars = selectedVars.length >= 2
+        ? selectedVars
+        : (activeDataset?.columns ?? []).filter((c) => c.type === 'numeric').map((c) => c.name)
+      if (vars.length < 2) return
+      const varList = vars.map((v) => `"${v}"`).join(', ')
       rScript = `
 library(jsonlite)
 
@@ -215,8 +219,7 @@ cat(toJSON(list(
                 >
                   <option value="">Select...</option>
                   {numericCols.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-                  {numericCols.length === 0 && <option value="anxiety">anxiety (demo)</option>}
-                </select>
+                    </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Variable 2</label>
@@ -227,7 +230,6 @@ cat(toJSON(list(
                 >
                   <option value="">Select...</option>
                   {numericCols.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-                  {numericCols.length === 0 && <option value="depression">depression (demo)</option>}
                 </select>
               </div>
             </div>
@@ -237,7 +239,7 @@ cat(toJSON(list(
                 Variables <span className="text-gray-400 font-normal">(select 2 or more; leave empty for all)</span>
               </p>
               {numericCols.length === 0 ? (
-                <p className="text-xs text-gray-500">Using demo variables: anxiety, depression, gpa</p>
+                <p className="text-xs text-gray-500">Load a dataset with numeric variables first.</p>
               ) : (
                 <div className="grid grid-cols-2 gap-1.5 max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-2">
                   {numericCols.map((col) => (
@@ -270,7 +272,7 @@ cat(toJSON(list(
 
           {!activeDataset && (
             <div className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-3 py-2">
-              No dataset loaded — using demo data. Import a dataset on the Data tab.
+              No dataset loaded — import a dataset on the Data tab before running this analysis.
             </div>
           )}
         </div>

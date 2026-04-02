@@ -5,7 +5,7 @@
  * highlight text to assign codes, view co-occurrence matrix.
  */
 
-import React, { useState, useRef } from 'react'
+import { useState } from 'react'
 import { WorkspaceLayout, PanelHeader } from '../../components/layout/WorkspaceLayout'
 import { usePsychrStore, QualCode, QualDocument, QualSegment } from '../../store'
 
@@ -14,21 +14,72 @@ const CODE_COLORS = [
   '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1',
 ]
 
+/** Render document content with coded segments highlighted */
+function renderHighlightedText(
+  content: string,
+  segments: QualSegment[],
+  codes: QualCode[]
+): React.ReactNode {
+  if (segments.length === 0) {
+    return <div className="whitespace-pre-wrap text-gray-800 leading-relaxed text-sm">{content}</div>
+  }
+
+  const sorted = [...segments].sort((a, b) => a.startOffset - b.startOffset)
+  const parts: React.ReactNode[] = []
+  let pos = 0
+
+  for (const seg of sorted) {
+    if (seg.startOffset > pos) {
+      parts.push(
+        <span key={`text-${pos}`}>{content.slice(pos, seg.startOffset)}</span>
+      )
+    }
+    const code = codes.find((c) => c.id === seg.codeIds[0])
+    const color = code?.color ?? '#FCD34D'
+    parts.push(
+      <mark
+        key={seg.id}
+        className="rounded px-0.5 cursor-default"
+        style={{
+          backgroundColor: color + '33',
+          borderBottom: `2px solid ${color}`,
+          outline: 'none',
+        }}
+        title={code?.name ?? 'Coded segment'}
+      >
+        {content.slice(seg.startOffset, seg.endOffset)}
+      </mark>
+    )
+    pos = seg.endOffset
+  }
+
+  if (pos < content.length) {
+    parts.push(<span key={`text-end`}>{content.slice(pos)}</span>)
+  }
+
+  return (
+    <div className="whitespace-pre-wrap text-gray-800 leading-relaxed text-sm">
+      {parts}
+    </div>
+  )
+}
+
 export function QualitativeTab() {
   const qualCodes = usePsychrStore((s) => s.qualCodes)
   const qualDocuments = usePsychrStore((s) => s.qualDocuments)
   const addQualCode = usePsychrStore((s) => s.addQualCode)
+  const updateQualCode = usePsychrStore((s) => s.updateQualCode)
+  const removeQualCode = usePsychrStore((s) => s.removeQualCode)
   const addQualDocument = usePsychrStore((s) => s.addQualDocument)
   const addQualSegment = usePsychrStore((s) => s.addQualSegment)
+  const removeQualSegment = usePsychrStore((s) => s.removeQualSegment)
 
   const [activeDocId, setActiveDocId] = useState<string | null>(null)
   const [selectedText, setSelectedText] = useState('')
-  const [selectionOffsets, setSelectionOffsets] = useState<{ start: number; end: number } | null>(null)
+  const [selectionOffset, setSelectionOffset] = useState<{ start: number; end: number } | null>(null)
   const [newCodeName, setNewCodeName] = useState('')
   const [showNewCode, setShowNewCode] = useState(false)
   const [hoveredCode, setHoveredCode] = useState<string | null>(null)
-  const docViewRef = useRef<HTMLDivElement>(null)
-
   const activeDoc = qualDocuments.find((d) => d.id === activeDocId)
 
   const handleAddCode = () => {
@@ -60,34 +111,91 @@ export function QualitativeTab() {
 
   const handleTextSelect = () => {
     const selection = window.getSelection()
-    if (!selection || !selection.toString().trim() || !activeDoc) return
-    const text = selection.toString().trim()
-    // Calculate character offset within the document content string
-    const start = activeDoc.content.indexOf(text)
-    if (start !== -1) {
-      setSelectionOffsets({ start, end: start + text.length })
-    } else {
-      setSelectionOffsets(null)
+    const text = selection?.toString().trim() ?? ''
+    if (!text || !activeDoc) {
+      if (!text) {
+        setSelectedText('')
+        setSelectionOffset(null)
+      }
+      return
     }
+
+    const idx = activeDoc.content.indexOf(text)
+    if (idx === -1) {
+      setSelectedText(text)
+      setSelectionOffset(null)
+      return
+    }
+
+    let bestIdx = idx
+    let searchFrom = 0
+    const occurrences: number[] = []
+    while (true) {
+      const found = activeDoc.content.indexOf(text, searchFrom)
+      if (found === -1) break
+      occurrences.push(found)
+      searchFrom = found + 1
+    }
+
+    if (occurrences.length > 1 && selection?.anchorNode?.textContent) {
+      const anchorText = selection.anchorNode.textContent
+      const anchorInDoc = activeDoc.content.indexOf(anchorText)
+      if (anchorInDoc !== -1) {
+        const absoluteAnchor = anchorInDoc + selection.anchorOffset
+        bestIdx = occurrences.reduce((best, occ) =>
+          Math.abs(occ - absoluteAnchor) < Math.abs(best - absoluteAnchor) ? occ : best
+        )
+      }
+    }
+
     setSelectedText(text)
+    setSelectionOffset({ start: bestIdx, end: bestIdx + text.length })
   }
 
   const handleApplyCode = (code: QualCode) => {
-    if (!selectedText || !activeDoc) return
-    const offsets = selectionOffsets ?? { start: 0, end: selectedText.length }
+    if (!selectedText || !activeDocId || !selectionOffset) return
+
+    const existingSegments = activeDoc?.segments ?? []
+    const overlapping = existingSegments.find(
+      (s) => s.startOffset < selectionOffset.end && s.endOffset > selectionOffset.start
+    )
+    if (overlapping) {
+      const existingCode = qualCodes.find((c) => c.id === overlapping.codeIds[0])
+      if (!confirm(`This selection overlaps with existing code "${existingCode?.name ?? 'unknown'}". Apply anyway?`)) return
+    }
+
     const segment: QualSegment = {
       id: `seg_${Date.now()}`,
-      documentId: activeDoc.id,
+      documentId: activeDocId,
       codeIds: [code.id],
-      startOffset: offsets.start,
-      endOffset: offsets.end,
+      startOffset: selectionOffset.start,
+      endOffset: selectionOffset.end,
       text: selectedText,
     }
-    addQualSegment(activeDoc.id, segment)
+
+    addQualSegment(activeDocId, segment)
+    updateQualCode(code.id, { count: code.count + 1 })
     setSelectedText('')
-    setSelectionOffsets(null)
+    setSelectionOffset(null)
     window.getSelection()?.removeAllRanges()
   }
+
+  const handleRemoveSegment = (seg: QualSegment) => {
+    if (!activeDocId) return
+    removeQualSegment(activeDocId, seg.id)
+    const code = qualCodes.find((c) => c.id === seg.codeIds[0])
+    if (code && code.count > 0) {
+      updateQualCode(code.id, { count: code.count - 1 })
+    }
+  }
+
+  const handleClearSelection = () => {
+    setSelectedText('')
+    setSelectionOffset(null)
+    window.getSelection()?.removeAllRanges()
+  }
+
+  const totalSegments = qualDocuments.reduce((s, d) => s + d.segments.length, 0)
 
   return (
     <WorkspaceLayout
@@ -106,7 +214,7 @@ export function QualitativeTab() {
               </button>
             }
           />
-          <div className="flex-1 overflow-y-auto border-b border-gray-200">
+          <div className="flex-1 overflow-y-auto border-b border-gray-200 min-h-0">
             {qualDocuments.length === 0 ? (
               <div className="px-4 py-6 text-center">
                 <p className="text-xs text-gray-500">No documents yet</p>
@@ -182,7 +290,7 @@ export function QualitativeTab() {
                 >
                   <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: code.color }} />
                   <span className="text-sm text-gray-800 flex-1">{code.name}</span>
-                  <span className="text-xs text-gray-400">{code.count}</span>
+                  <span className="text-xs font-semibold" style={{ color: code.color }}>{code.count}</span>
                 </button>
               ))
             )}
@@ -202,11 +310,14 @@ export function QualitativeTab() {
           {selectedText && (
             <div className="px-4 py-2 bg-yellow-50 border-b border-yellow-200 flex items-center justify-between">
               <p className="text-xs text-yellow-800">
-                Selected: <em>"{selectedText.slice(0, 60)}{selectedText.length > 60 ? '...' : ''}"</em>
+                {selectionOffset
+                  ? <>Selected <em>"{selectedText.slice(0, 60)}{selectedText.length > 60 ? '...' : ''}"</em> (chars {selectionOffset.start}–{selectionOffset.end})</>
+                  : <>Selected: <em>"{selectedText.slice(0, 60)}"</em> — position not found in document</>
+                }
               </p>
               <button
-                onClick={() => { setSelectedText(''); window.getSelection()?.removeAllRanges() }}
-                className="text-xs text-yellow-600 hover:underline"
+                onClick={handleClearSelection}
+                className="text-xs text-yellow-600 hover:underline ml-3 flex-shrink-0"
               >
                 Clear
               </button>
@@ -219,20 +330,18 @@ export function QualitativeTab() {
                 <p className="text-gray-600 font-medium">No document open</p>
                 <p className="text-gray-400 text-sm mt-1">Add a document from the left panel to start coding</p>
                 <div className="mt-6 text-left max-w-sm space-y-2 text-sm text-gray-500">
-                  <p>✓ Import .txt, .docx, PDF transcripts</p>
+                  <p>✓ Paste text content as document</p>
                   <p>✓ Highlight text → click code to apply</p>
-                  <p>✓ View co-occurrence matrix</p>
-                  <p>✓ Inter-rater reliability (Cohen kappa)</p>
-                  <p>✓ Export codebook as .docx</p>
+                  <p>✓ Color-coded highlights per code</p>
+                  <p>✓ Track segment counts per code</p>
                 </div>
               </div>
             ) : (
               <div
-                ref={docViewRef}
-                className="prose prose-sm max-w-none text-gray-800 leading-relaxed select-text"
+                className="prose prose-sm max-w-none select-text"
                 onMouseUp={handleTextSelect}
               >
-                <HighlightedDoc doc={activeDoc} codes={qualCodes} />
+                {renderHighlightedText(activeDoc.content, activeDoc.segments, qualCodes)}
               </div>
             )}
           </div>
@@ -254,12 +363,52 @@ export function QualitativeTab() {
                     <div className="w-4 h-4 rounded flex-shrink-0" style={{ backgroundColor: code.color }} />
                     <span className="text-sm font-medium text-gray-800 flex-1">{code.name}</span>
                     <span className="text-xs font-bold" style={{ color: code.color }}>{code.count}</span>
+                    <button
+                      onClick={() => removeQualCode(code.id)}
+                      className="text-gray-300 hover:text-red-400 text-xs leading-none ml-1"
+                      title="Remove code"
+                    >
+                      ×
+                    </button>
                   </div>
                 ))}
                 <div className="pt-2 border-t border-gray-200">
                   <p className="text-xs text-gray-500">
-                    {qualCodes.length} codes · {qualDocuments.reduce((s, d) => s + d.segments.length, 0)} segments
+                    {qualCodes.length} code{qualCodes.length !== 1 ? 's' : ''} · {totalSegments} segment{totalSegments !== 1 ? 's' : ''}
                   </p>
+                </div>
+              </div>
+            )}
+
+            {/* Segments in active document */}
+            {activeDoc && activeDoc.segments.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">
+                  Segments in "{activeDoc.name}"
+                </p>
+                <div className="space-y-1.5">
+                  {activeDoc.segments.map((seg) => {
+                    const code = qualCodes.find((c) => c.id === seg.codeIds[0])
+                    return (
+                      <div key={seg.id} className="flex items-start gap-2 p-2 rounded bg-gray-50 border border-gray-100 group">
+                        <div
+                          className="w-2 h-2 rounded-full flex-shrink-0 mt-1"
+                          style={{ backgroundColor: code?.color ?? '#ccc' }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-gray-600">{code?.name ?? 'Unknown'}</p>
+                          <p className="text-xs text-gray-500 truncate italic">"{seg.text.slice(0, 50)}{seg.text.length > 50 ? '...' : ''}"</p>
+                        </div>
+                        <button
+                          onClick={() => handleRemoveSegment(seg)}
+                          className="text-gray-300 hover:text-red-400 text-xs leading-none opacity-0 group-hover:opacity-100 flex-shrink-0"
+                          title="Remove segment"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )}
@@ -270,66 +419,3 @@ export function QualitativeTab() {
   )
 }
 
-// ─── Highlighted document renderer ───────────────────────────────────────────
-
-function HighlightedDoc({ doc, codes }: { doc: QualDocument; codes: QualCode[] }) {
-  const codeMap = Object.fromEntries(codes.map((c) => [c.id, c]))
-
-  // Build sorted, non-overlapping list of spans to highlight
-  const spans = [...doc.segments].sort((a, b) => a.startOffset - b.startOffset)
-  const parts: React.ReactNode[] = []
-  let cursor = 0
-
-  for (const seg of spans) {
-    if (seg.startOffset > cursor) {
-      parts.push(doc.content.slice(cursor, seg.startOffset))
-    }
-    const color = codeMap[seg.codeIds[0]]?.color ?? '#3B82F6'
-    parts.push(
-      <mark
-        key={seg.id}
-        title={codeMap[seg.codeIds[0]]?.name ?? ''}
-        style={{ backgroundColor: color + '33', borderBottom: `2px solid ${color}`, borderRadius: 2 }}
-      >
-        {doc.content.slice(seg.startOffset, seg.endOffset)}
-      </mark>
-    )
-    cursor = seg.endOffset
-  }
-  if (cursor < doc.content.length) {
-    parts.push(doc.content.slice(cursor))
-  }
-
-  // Re-split into paragraphs for rendering
-  const fullText = doc.content
-  return (
-    <>
-      {fullText.split('\n').map((line, i) => {
-        const lineStart = fullText.split('\n').slice(0, i).join('\n').length + (i > 0 ? 1 : 0)
-        const lineEnd = lineStart + line.length
-        // Render highlighted spans within this line
-        const lineSpans: React.ReactNode[] = []
-        let lc = lineStart
-        for (const seg of spans) {
-          if (seg.endOffset <= lineStart || seg.startOffset >= lineEnd) continue
-          const s = Math.max(seg.startOffset, lineStart)
-          const e = Math.min(seg.endOffset, lineEnd)
-          if (s > lc) lineSpans.push(fullText.slice(lc, s))
-          const color = codeMap[seg.codeIds[0]]?.color ?? '#3B82F6'
-          lineSpans.push(
-            <mark
-              key={seg.id}
-              title={codeMap[seg.codeIds[0]]?.name ?? ''}
-              style={{ backgroundColor: color + '33', borderBottom: `2px solid ${color}`, borderRadius: 2 }}
-            >
-              {fullText.slice(s, e)}
-            </mark>
-          )
-          lc = e
-        }
-        if (lc < lineEnd) lineSpans.push(fullText.slice(lc, lineEnd))
-        return <p key={i} className="mb-2">{lineSpans.length > 0 ? lineSpans : line || <br />}</p>
-      })}
-    </>
-  )
-}

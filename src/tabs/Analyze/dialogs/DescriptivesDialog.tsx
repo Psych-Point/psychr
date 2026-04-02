@@ -47,7 +47,6 @@ export function DescriptivesDialog({ onClose, onRun }: Props) {
 library(psych)
 library(jsonlite)
 
-# df is injected by useRBridge from the active dataset
 selected_vars <- c(${varList})
 df_sub <- df[, intersect(selected_vars, names(df)), drop = FALSE]
 

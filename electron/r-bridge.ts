@@ -40,12 +40,9 @@ export class RBridge {
 
   private detectRPath(): string {
     if (process.platform === 'win32') {
-      const winCandidates = [
-        'C:\\Program Files\\R\\R-4.5.0\\bin\\Rscript.exe',
-        'C:\\Program Files\\R\\R-4.4.0\\bin\\Rscript.exe',
-        'C:\\Program Files\\R\\R-4.3.0\\bin\\Rscript.exe',
-        'C:\\Program Files\\R\\R-4.2.0\\bin\\Rscript.exe',
-      ]
+      const pf = process.env['PROGRAMFILES'] ?? 'C:\\Program Files'
+      const versions = ['4.5.0', '4.4.3', '4.4.2', '4.4.1', '4.4.0', '4.3.3', '4.3.2', '4.3.1', '4.3.0', '4.2.3', '4.2.2', '4.2.1', '4.2.0']
+      const winCandidates = versions.map((v) => `${pf}\\R\\R-${v}\\bin\\Rscript.exe`)
       return winCandidates.find(existsSync) ?? 'Rscript'
     }
     // macOS / Linux — check known install locations before falling back to PATH
@@ -92,6 +89,8 @@ tryCatch({
       return { success: false, error: `Failed to write temp R script: ${err}` }
     }
 
+    const TIMEOUT_MS = 120_000 // 2 minutes
+
     return new Promise((resolve) => {
       const proc = spawn(this.rPath, ['--vanilla', '--quiet', tempFile], {
         env: { ...process.env, R_NO_READLINE: '1' },
@@ -99,11 +98,24 @@ tryCatch({
 
       let stdout = ''
       let stderr = ''
+      let timedOut = false
+
+      const timeout = setTimeout(() => {
+        timedOut = true
+        proc.kill('SIGKILL')
+        try { unlinkSync(tempFile) } catch {}
+        resolve({
+          success: false,
+          error: `R process timed out after ${TIMEOUT_MS / 1000}s. The analysis may need too much memory or have an infinite loop.`,
+        })
+      }, TIMEOUT_MS)
 
       proc.stdout.on('data', (chunk) => { stdout += chunk.toString() })
       proc.stderr.on('data', (chunk) => { stderr += chunk.toString() })
 
       proc.on('close', (code) => {
+        if (timedOut) return
+        clearTimeout(timeout)
         // Cleanup temp file
         try { unlinkSync(tempFile) } catch {}
 

@@ -17,6 +17,10 @@ import { TTestDialog } from './dialogs/TTestDialog'
 import { ANOVADialog } from './dialogs/ANOVADialog'
 import { CorrelationDialog } from './dialogs/CorrelationDialog'
 import { RegressionDialog } from './dialogs/RegressionDialog'
+import { ReliabilityDialog } from './dialogs/ReliabilityDialog'
+import { NonParametricDialog } from './dialogs/NonParametricDialog'
+import { FrequenciesDialog } from './dialogs/FrequenciesDialog'
+import { NormalityDialog } from './dialogs/NormalityDialog'
 
 // ─── Analysis Category Tree ────────────────────────────────────────────────────
 
@@ -65,10 +69,10 @@ const ANALYSIS_CATEGORIES: AnalysisCategory[] = [
     label: 'Non-Parametric',
     icon: '🔢',
     items: [
-      { id: 'mann-whitney', label: 'Mann-Whitney U', description: 'Non-parametric 2-group comparison', phase: 'coming-soon' },
-      { id: 'wilcoxon', label: 'Wilcoxon Signed-Rank', description: 'Non-parametric paired comparison', phase: 'coming-soon' },
-      { id: 'kruskal-wallis', label: 'Kruskal-Wallis', description: 'Non-parametric 3+ group comparison', phase: 'coming-soon' },
-      { id: 'chi-square', label: 'Chi-Square', description: 'Test of independence / goodness of fit', phase: 'coming-soon' },
+      { id: 'mann-whitney', label: 'Mann-Whitney U', description: 'Non-parametric 2-group comparison', phase: 'available' },
+      { id: 'wilcoxon', label: 'Wilcoxon Signed-Rank', description: 'Non-parametric paired comparison', phase: 'available' },
+      { id: 'kruskal-wallis', label: 'Kruskal-Wallis', description: 'Non-parametric 3+ group comparison', phase: 'available' },
+      { id: 'chi-square', label: 'Chi-Square', description: 'Test of independence / Cramér\'s V', phase: 'available' },
     ],
   },
   {
@@ -110,8 +114,8 @@ const ANALYSIS_CATEGORIES: AnalysisCategory[] = [
     label: 'Reliability',
     icon: '🔒',
     items: [
-      { id: 'cronbach', label: "Cronbach's Alpha", description: 'Internal consistency', phase: 'coming-soon' },
-      { id: 'omega', label: "McDonald's Omega", description: 'Better reliability estimate', phase: 'coming-soon' },
+      { id: 'cronbach', label: "Cronbach's Alpha", description: 'Internal consistency — item-total correlations', phase: 'available' },
+      { id: 'omega', label: "McDonald's Omega", description: 'Omega hierarchical + total via psych', phase: 'available' },
       { id: 'icc', label: 'ICC', description: 'Intraclass correlation / inter-rater', phase: 'coming-soon' },
     ],
   },
@@ -250,6 +254,12 @@ export function AnalyzeTab() {
       {activeDialog === 'descriptive-stats' && (
         <DescriptivesDialog onClose={() => setActiveDialog(null)} onRun={run} />
       )}
+      {activeDialog === 'frequencies' && (
+        <FrequenciesDialog onClose={() => setActiveDialog(null)} onRun={run} />
+      )}
+      {activeDialog === 'normality' && (
+        <NormalityDialog onClose={() => setActiveDialog(null)} onRun={run} />
+      )}
       {(activeDialog === 'independent-t' || activeDialog === 'paired-t' || activeDialog === 'one-sample-t') && (
         <TTestDialog
           onClose={() => setActiveDialog(null)}
@@ -265,6 +275,20 @@ export function AnalyzeTab() {
       )}
       {(activeDialog === 'linear-regression' || activeDialog === 'multiple-regression') && (
         <RegressionDialog onClose={() => setActiveDialog(null)} onRun={run} />
+      )}
+      {(activeDialog === 'cronbach' || activeDialog === 'omega') && (
+        <ReliabilityDialog
+          onClose={() => setActiveDialog(null)}
+          onRun={run}
+          initialOmega={activeDialog === 'omega'}
+        />
+      )}
+      {(activeDialog === 'mann-whitney' || activeDialog === 'wilcoxon' || activeDialog === 'kruskal-wallis' || activeDialog === 'chi-square') && (
+        <NonParametricDialog
+          onClose={() => setActiveDialog(null)}
+          onRun={run}
+          initialTest={activeDialog as 'mann-whitney' | 'wilcoxon' | 'kruskal-wallis' | 'chi-square'}
+        />
       )}
     </>
   )

@@ -168,7 +168,6 @@ cat(toJSON(list(
               >
                 <option value="">Select variable...</option>
                 {numericCols.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-                {numericCols.length === 0 && <option value="anxiety">anxiety (demo)</option>}
               </select>
             </div>
             <div>
@@ -180,7 +179,6 @@ cat(toJSON(list(
               >
                 <option value="">Select variable...</option>
                 {factorCols.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-                {factorCols.length === 0 && <option value="gender">gender (demo)</option>}
               </select>
             </div>
           </div>
@@ -220,7 +218,7 @@ cat(toJSON(list(
 
           {!activeDataset && (
             <div className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-3 py-2">
-              No dataset loaded — using demo data (n = 8). Import a dataset on the Data tab.
+              No dataset loaded — import a dataset on the Data tab before running this analysis.
             </div>
           )}
         </div>

@@ -78,10 +78,14 @@ export function IRTTab() {
 library(mirt)
 library(jsonlite)
 
+item_cols <- c(${itemList})
+item_data <- df[, intersect(item_cols, names(df)), drop = FALSE]
+if (ncol(item_data) < 3) stop("Selected items not found in dataset.")
+
 model_type <- "${selectedModel === '2pl' ? '2PL' : selectedModel === '3pl' ? '3PL' : selectedModel === 'grm' ? 'graded' : selectedModel === 'gpcm' ? 'gpcm' : 'Rasch'}"
-irt_df <- df[, c(${itemList}), drop = FALSE]
-fit <- mirt(irt_df, 1, itemtype = model_type, verbose = FALSE)
+fit <- mirt(item_data, 1, itemtype = model_type, verbose = FALSE)
 params <- coef(fit, simplify = TRUE, IRTpars = TRUE)$items
+if (is.null(params)) params <- coef(fit, simplify = TRUE)$items
 
 param_list <- lapply(rownames(params), function(item) {
   row <- as.list(params[item, ])
@@ -95,7 +99,9 @@ fit_stats <- M2(fit)
 cat(toJSON(list(
   success = TRUE,
   r_script = paste0(
-    "library(mirt)\\nfit <- mirt(df, 1, itemtype = '", model_type, "', verbose = FALSE)\\n",
+    "library(mirt)\\n",
+    "item_data <- df[, c(", paste0('"', colnames(item_data), '"', collapse = ", "), ")]\\n",
+    "fit <- mirt(item_data, 1, itemtype = '", model_type, "', verbose = FALSE)\\n",
     "params <- coef(fit, simplify = TRUE, IRTpars = TRUE)\\nprint(params)"
   ),
   data = list(

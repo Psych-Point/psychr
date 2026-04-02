@@ -102,7 +102,8 @@ export function VisualizationTab() {
   }
 
   const handleGeneratePlot = async () => {
-    if (!config.x) return
+    if (!activeDataset) { alert('Please load a dataset on the Data tab first.'); return }
+    if (!config.x) { alert('Please select an X variable.'); return }
 
     const ggcode = buildGgplotScript()
     setGgplotCode(ggcode)

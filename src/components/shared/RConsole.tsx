@@ -11,6 +11,7 @@ import { useState, useCallback } from 'react'
 import Editor, { loader } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
 import { usePsychrStore, DataColumn } from '../../store'
+import { buildDataInjection } from '../../hooks/useRBridge'
 
 // Use locally installed monaco-editor instead of CDN — works offline and in Electron
 loader.config({ monaco })
@@ -70,15 +71,10 @@ export function RConsole() {
     setRunError(null)
     setOutput(null)
 
-    // Build data injection
-    let dataInjection = ''
-    if (activeDataset?.data?.length) {
-      const rows = activeDataset.data.slice(0, 5000)
-      const json = JSON.stringify(rows)
-        .replace(/\\/g, '\\\\')
-        .replace(/'/g, "\\'")
-      dataInjection = `df <- as.data.frame(jsonlite::fromJSON('${json}'), stringsAsFactors = FALSE)\ndf <- type.convert(df, as.is = TRUE)\n`
-    }
+    // Use the shared buildDataInjection helper instead of duplicating the logic here
+    const dataInjection = activeDataset?.data?.length
+      ? buildDataInjection(activeDataset.data)
+      : ''
 
     const wrappedScript = `
 library(jsonlite)
@@ -90,7 +86,7 @@ ${dataInjection}
 ${currentCode}
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Capture the last expression if it's a data frame
+# Capture the last expression if it's a data frame and update the dataset
 if (exists("df") && is.data.frame(df)) {
   n_rows <- nrow(df)
   n_cols <- ncol(df)
@@ -101,9 +97,12 @@ if (exists("df") && is.data.frame(df)) {
                 else if (is.factor(col)) "factor"
                 else if (is.logical(col)) "logical"
                 else "character"
-    result <- list(name = col_name, type = col_type,
-                   missingCount = sum(is.na(col)),
-                   uniqueCount = length(unique(col[!is.na(col)])))
+    result <- list(
+      name         = col_name,
+      type         = col_type,
+      missingCount = sum(is.na(col)),
+      uniqueCount  = length(unique(col[!is.na(col)]))
+    )
     if (col_type == "numeric") {
       result$min  <- round(min(col, na.rm = TRUE), 4)
       result$max  <- round(max(col, na.rm = TRUE), 4)
@@ -119,18 +118,17 @@ if (exists("df") && is.data.frame(df)) {
   })
 
   cat(toJSON(list(
-    success    = TRUE,
-    r_script   = ${JSON.stringify(currentCode)},
-    has_df     = TRUE,
+    success  = TRUE,
+    r_script = ${JSON.stringify(currentCode)},
+    has_df   = TRUE,
     data = list(
-      rows     = n_rows,
-      columns  = col_info,
-      preview  = preview,
-      message  = paste0("df updated: ", n_rows, " rows × ", n_cols, " columns")
+      rows    = n_rows,
+      columns = col_info,
+      preview = preview,
+      message = paste0("df updated: ", n_rows, " rows × ", n_cols, " columns")
     )
   ), auto_unbox = TRUE, null = "null"))
 } else {
-  # No df — just report success
   cat(toJSON(list(
     success  = TRUE,
     r_script = ${JSON.stringify(currentCode)},
@@ -141,26 +139,21 @@ if (exists("df") && is.data.frame(df)) {
 `
 
     try {
-      // @ts-expect-error
-      const psychr = window.psychr
-      if (!psychr?.r?.run) {
+      if (!window.psychr?.r?.run) {
         setRunError('R is not connected. Run the app via Electron (npm run dev) to execute code.')
-        setIsRunning(false)
         return
       }
 
-      const result = await psychr.r.run(wrappedScript)
+      const result = await window.psychr.r.run(wrappedScript)
 
       if (!result.success) {
         setRunError(result.error || result.stderr || 'R error')
-        setIsRunning(false)
         return
       }
 
       // has_df is on the top-level result; rows/columns/preview are inside result.data
       const rData = (result.data ?? result) as Record<string, unknown>
 
-      // If the script returned a modified df, update the active dataset
       if (result.has_df && activeDataset) {
         updateDataset(activeDataset.id, {
           rows: rData.rows as number,
@@ -212,13 +205,13 @@ if (exists("df") && is.data.frame(df)) {
             <div className="flex gap-1.5">
               <button
                 onClick={handleCopyScript}
-                className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-2 py-1 rounded"
+                className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-2 py-1 rounded transition-colors"
               >
                 Copy
               </button>
               <button
                 onClick={clearScript}
-                className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-2 py-1 rounded"
+                className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-2 py-1 rounded transition-colors"
               >
                 Clear
               </button>
@@ -281,7 +274,7 @@ if (exists("df") && is.data.frame(df)) {
               <div className="flex gap-2">
                 <button
                   onClick={() => { setOutput(null); setRunError(null); setCode(null) }}
-                  className="text-xs text-gray-500 hover:text-gray-300 px-2 py-1"
+                  className="text-xs text-gray-500 hover:text-gray-300 px-2 py-1 transition-colors"
                 >
                   Reset
                 </button>
@@ -290,18 +283,22 @@ if (exists("df") && is.data.frame(df)) {
                   disabled={isRunning || !activeDataset}
                   className="text-xs font-semibold bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white px-4 py-1.5 rounded flex items-center gap-1.5 transition-colors"
                 >
-                  {isRunning ? 'Running…' : '▶ Run'}
+                  {isRunning
+                    ? <><span className="w-2.5 h-2.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Running…</>
+                    : '▶ Run'}
                 </button>
               </div>
             </div>
             {runError && (
               <div className="px-3 pb-2 text-xs font-mono text-red-400 bg-red-950/30 max-h-24 overflow-auto flex items-start gap-2">
-                <span className="flex-1">{runError}</span>
+                <span className="flex-1 whitespace-pre-wrap">{runError}</span>
                 <button
                   onClick={() => setRunError(null)}
-                  className="text-red-400 hover:text-red-200 text-sm leading-none flex-shrink-0 mt-0.5"
-                  title="Dismiss error"
-                >×</button>
+                  className="text-red-400 hover:text-red-200 text-sm leading-none flex-shrink-0 mt-0.5 transition-colors"
+                  aria-label="Dismiss error"
+                >
+                  ×
+                </button>
               </div>
             )}
           </div>

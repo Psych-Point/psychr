@@ -300,27 +300,72 @@ import type { AnalysisResult } from '../../store'
 
 function ResultBlock({ result }: { result: AnalysisResult }) {
   const [expanded, setExpanded] = useState(true)
+  const [copied, setCopied] = useState(false)
+
+  const handleCopyScript = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    navigator.clipboard.writeText(result.rScript).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    }).catch(() => {})
+  }
 
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden">
+      {/* Header */}
       <div
-        className="flex items-center justify-between px-4 py-2 bg-psychr-lightblue cursor-pointer"
+        className="flex items-center justify-between px-4 py-2 bg-psychr-lightblue cursor-pointer select-none"
         onClick={() => setExpanded((e) => !e)}
       >
-        <div>
-          <p className="text-sm font-semibold text-psychr-blue">{result.label}</p>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-psychr-blue truncate">{result.label}</p>
           <p className="text-xs text-gray-500">
             {new Date(result.timestamp).toLocaleTimeString()}
           </p>
         </div>
-        <span className="text-gray-500 text-sm">{expanded ? '▾' : '▸'}</span>
+        <div className="flex items-center gap-2 ml-2 shrink-0">
+          <button
+            onClick={handleCopyScript}
+            className="text-xs text-gray-500 hover:text-psychr-blue bg-white/70 hover:bg-white px-2 py-0.5 rounded border border-gray-200 transition-colors"
+            title="Copy R script"
+          >
+            {copied ? '✓ Copied' : 'Copy R'}
+          </button>
+          <span className="text-gray-400 text-sm">{expanded ? '▾' : '▸'}</span>
+        </div>
       </div>
+
+      {/* Body */}
       {expanded && (
-        <div className="p-4">
-          {result.output.table ? (
+        <div className="p-4 space-y-3">
+          {/* Main table */}
+          {result.output.table && (
             <OutputTable data={result.output.table as Record<string, unknown>[]} />
-          ) : (
-            <pre className="text-xs font-mono text-gray-700 whitespace-pre-wrap">
+          )}
+          {/* Secondary tables (e.g. ANOVA group means, post-hoc) */}
+          {result.output.means && (
+            <>
+              <p className="text-xs font-semibold text-gray-600 mt-2">Group Means</p>
+              <OutputTable data={result.output.means as Record<string, unknown>[]} />
+            </>
+          )}
+          {result.output.posthoc && Array.isArray(result.output.posthoc) && (result.output.posthoc as unknown[]).length > 0 && (
+            <>
+              <p className="text-xs font-semibold text-gray-600 mt-2">Post-hoc Comparisons</p>
+              <OutputTable data={result.output.posthoc as Record<string, unknown>[]} />
+            </>
+          )}
+          {/* Model fit summary (regression) */}
+          {result.output.model_fit && (
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 font-mono bg-gray-50 rounded px-3 py-2 border border-gray-100">
+              {Object.entries(result.output.model_fit as Record<string, unknown>).map(([k, v]) => (
+                <span key={k}><span className="text-gray-400">{k}:</span> {String(v)}</span>
+              ))}
+            </div>
+          )}
+          {/* Fallback: raw JSON when no table structure present */}
+          {!result.output.table && !result.output.model_fit && (
+            <pre className="text-xs font-mono text-gray-700 whitespace-pre-wrap bg-gray-50 rounded p-3 border border-gray-100">
               {JSON.stringify(result.output, null, 2)}
             </pre>
           )}

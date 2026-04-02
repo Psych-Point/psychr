@@ -222,6 +222,10 @@ cat(toJSON(list(success=TRUE,data=list(rows=nrow(df),columns=col_info,preview=pr
     }
   }, [addDataset, appendToScript])
 
+  // Cap visible rows to 500 for performance — the full dataset is always in memory
+  // and sent to R; this only limits what the HTML table renders.
+  const MAX_DISPLAY_ROWS = 500
+
   const filteredData = filterText
     ? displayData.filter((row) =>
         Object.values(row).some((v) =>
@@ -229,6 +233,9 @@ cat(toJSON(list(success=TRUE,data=list(rows=nrow(df),columns=col_info,preview=pr
         )
       )
     : displayData
+
+  const visibleData = filteredData.slice(0, MAX_DISPLAY_ROWS)
+  const isTruncated = filteredData.length > MAX_DISPLAY_ROWS
 
   const selectedColInfo = displayColumns.find((c) => c.name === selectedCol)
 
@@ -359,6 +366,11 @@ cat(toJSON(list(success=TRUE,data=list(rows=nrow(df),columns=col_info,preview=pr
                 Demo data — import a file to get started
               </span>
             )}
+            {isTruncated && (
+              <span className="text-xs bg-orange-50 text-orange-600 border border-orange-200 px-2 py-0.5 rounded">
+                Showing first {MAX_DISPLAY_ROWS.toLocaleString()} of {filteredData.length.toLocaleString()} rows
+              </span>
+            )}
             <input
               value={filterText}
               onChange={(e) => setFilterText(e.target.value)}
@@ -396,7 +408,7 @@ cat(toJSON(list(success=TRUE,data=list(rows=nrow(df),columns=col_info,preview=pr
                 </tr>
               </thead>
               <tbody>
-                {filteredData.map((row, rowIdx) => (
+                {visibleData.map((row, rowIdx) => (
                   <tr key={rowIdx} className={rowIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                     <td className="text-center text-xs text-gray-400 px-2 py-1.5 border-r border-gray-100">
                       {rowIdx + 1}

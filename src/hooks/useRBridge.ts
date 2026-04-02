@@ -27,7 +27,7 @@ function buildDataInjection(data: Record<string, unknown>[]): string {
   const json = JSON.stringify(rows)
     .replace(/\\/g, '\\\\')
     .replace(/'/g, "\\'")
-  return `df <- as.data.frame(jsonlite::fromJSON('${json}'), stringsAsFactors = FALSE)\n`
+  return `df <- as.data.frame(jsonlite::fromJSON('${json}'), stringsAsFactors = FALSE)\ndf <- type.convert(df, as.is = TRUE)\n`
 }
 
 export function useRBridge(): UseRBridgeReturn {

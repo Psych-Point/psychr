@@ -65,13 +65,13 @@ export function WranglingPanel(_props: WranglingPanelProps) {
     })
   }
 
-  const runWrangling = async (rExpr: string, label: string) => {
+  const runWrangling = async (rExpr: string, label: string, needsTidyr = false) => {
     if (!activeDataset) return
 
     const script = `
 library(jsonlite)
 library(dplyr)
-library(tidyr)
+${needsTidyr ? 'library(tidyr)' : ''}
 
 # Apply operation
 ${rExpr}
@@ -615,7 +615,7 @@ function RecodeDialog({ cols, onApply, onClose }: {
 // ── Pivot Longer ──────────────────────────────────────────────────────────────
 
 function PivotLongerDialog({ cols, onApply, onClose }: {
-  cols: DataColumn[]; onApply: (r: string, l: string) => void; onClose: () => void
+  cols: DataColumn[]; onApply: (r: string, l: string, needsTidyr?: boolean) => void; onClose: () => void
 }) {
   const [pivotCols, setPivotCols] = useState<string[]>([])
   const [namesTo, setNamesTo] = useState('variable')
@@ -628,7 +628,8 @@ function PivotLongerDialog({ cols, onApply, onClose }: {
     const colStr = pivotCols.map((c) => `"${c}"`).join(', ')
     onApply(
       `df <- df %>% pivot_longer(cols = c(${colStr}), names_to = "${namesTo}", values_to = "${valuesTo}")`,
-      `Pivot Longer (${pivotCols.length} cols)`
+      `Pivot Longer (${pivotCols.length} cols)`,
+      true
     )
   }
 
@@ -664,7 +665,7 @@ function PivotLongerDialog({ cols, onApply, onClose }: {
 // ── Pivot Wider ───────────────────────────────────────────────────────────────
 
 function PivotWiderDialog({ cols, onApply, onClose }: {
-  cols: DataColumn[]; onApply: (r: string, l: string) => void; onClose: () => void
+  cols: DataColumn[]; onApply: (r: string, l: string, needsTidyr?: boolean) => void; onClose: () => void
 }) {
   const [namesFrom, setNamesFrom] = useState('')
   const [valuesFrom, setValuesFrom] = useState('')
@@ -673,7 +674,8 @@ function PivotWiderDialog({ cols, onApply, onClose }: {
     if (!namesFrom || !valuesFrom) return
     onApply(
       `df <- df %>% pivot_wider(names_from = "${namesFrom}", values_from = "${valuesFrom}")`,
-      `Pivot Wider (${namesFrom} → columns)`
+      `Pivot Wider (${namesFrom} → columns)`,
+      true
     )
   }
 
